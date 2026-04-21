@@ -2,7 +2,7 @@
 
 A minimal system fetch tool written in Rust. Shows your system info next to your distro's ascii art. That's it.
 
-![]("https://github.com/user-attachments/assets/ced1b260-83ea-4b2f-8e82-f39cd1ab957b">)
+<img width="819" height="272" alt="Screenshot_20260421_154924" src="https://github.com/user-attachments/assets/6e7b0479-e901-4c2d-b08c-536ce0f61efc" />
 
 ## What it shows
 
