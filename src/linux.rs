@@ -1,6 +1,5 @@
 use crate::ascii::{colorize, get_ascii_art, visible_width};
 use std::fs;
-use std::process::Command;
 use std::io::BufWriter;
 use std::io::StdoutLock;
 use pci_ids::Device;
