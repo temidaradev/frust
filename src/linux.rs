@@ -3,7 +3,7 @@ use std::fs;
 use std::process::Command;
 use std::io::BufWriter;
 use std::io::StdoutLock;
-
+use pci_ids::Device;
 
 const BLUE: &str = "\x1b[34m";
 const RESET: &str = "\x1b[0m";
@@ -72,31 +72,43 @@ fn get_cpu_info() -> Option<String> {
     Some(label("\u{f2db} CPU", &model))
 }
 
+
 fn get_gpu_info() -> Option<String> {
-    let output = Command::new("lspci").arg("-mm").output().ok()?;
+    let entries = fs::read_dir("/sys/class/drm").ok()?;
 
-    let stdout = String::from_utf8_lossy(&output.stdout);
+    let gpus: Vec<String> = entries
+    .filter_map(|e| e.ok())
+    .filter(|e| {
+        let n = e.file_name();
+        let s = n.to_string_lossy();
+        s.starts_with("card") && !s.contains('-')
+    })
+    .filter_map(|e| {
+        let uevent = fs::read_to_string(
+            e.path().join("device/uevent")
+        ).ok()?;
 
-    let gpus: Vec<String> = stdout
-        .lines()
-        .filter(|l| l.contains("VGA") || l.contains("3D controller") || l.contains("Display"))
-        .filter_map(|l| {
-            let parts: Vec<&str> = l.split('"').collect();
-            let vendor = parts.get(3)?.trim();
-            let device = parts.get(5)?.trim();
-            Some(format!("{} {}", vendor, device))
-        })
-        .collect();
+        let pci_id = uevent.lines()
+        .find(|l| l.starts_with("PCI_ID="))?
+        .strip_prefix("PCI_ID=")?
+        .trim();
 
-    if gpus.is_empty() {
-        return None;
-    }
+        let mut parts = pci_id.split(':');
+        let vendor_id = u16::from_str_radix(parts.next()?, 16).ok()?;
+        let device_id = u16::from_str_radix(parts.next()?, 16).ok()?;
+
+        Device::from_vid_pid(vendor_id, device_id)
+        .map(|d| format!("{} {}", d.vendor().name(), d.name()))
+    })
+    .collect();
+
+    if gpus.is_empty() { return None; }
 
     Some(
         gpus.iter()
-            .map(|gpu| label("\u{f26c} GPU", gpu))
-            .collect::<Vec<_>>()
-            .join("\n"),
+        .map(|g| label("\u{f26c} GPU", g))
+        .collect::<Vec<_>>()
+        .join("\n"),
     )
 }
 

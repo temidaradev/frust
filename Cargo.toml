@@ -5,6 +5,7 @@ edition = "2024"
 
 [dependencies]
 libc = "0.2.185"
+pci-ids = "0.2.6"
 
 [profile.release]
 opt-level = 3

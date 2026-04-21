@@ -17,6 +17,8 @@ fn main() {
     #[cfg(target_os = "macos")]
     darwin::show_info(&mut out);
 
+    drop(out);
+
     let elapsed = start.elapsed();
 
     let ram = std::fs::read_to_string("/proc/self/status")
