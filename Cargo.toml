@@ -1,5 +1,5 @@
 [package]
-name = "frust"
+name = "fust"
 version = "0.1.0"
 edition = "2024"
 description = "A fast system info tool written in Rust"
