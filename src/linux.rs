@@ -1,6 +1,9 @@
 use crate::ascii::{colorize, get_ascii_art, visible_width};
 use std::fs;
 use std::process::Command;
+use std::io::{BufWriter, Write};
+use std::io::StdoutLock;
+
 
 const BLUE: &str = "\x1b[34m";
 const RESET: &str = "\x1b[0m";
@@ -145,7 +148,26 @@ fn get_shell_info() -> Option<String> {
     Some(label("Shell", &std::env::var("SHELL").ok()?))
 }
 
-pub fn show_info() {
+fn get_disk_info() -> Option<String> {
+    let path = c"/";
+    let mut stat: libc::statvfs = unsafe { std::mem::zeroed() };
+    
+    if unsafe { libc::statvfs(path.as_ptr(), &mut stat) } != 0 {
+        return None;
+    }
+
+    let gib = |b: u64| b as f64 / 1_073_741_824.0;
+    let total = stat.f_blocks * stat.f_frsize;
+    let avail = stat.f_bavail * stat.f_frsize;
+    let used  = total - avail;
+
+    Some(label(
+        "Disk",
+        &format!("{:.2} / {:.2} GiB", gib(used), gib(total)),
+    ))
+}
+
+pub fn show_info(out: &mut BufWriter<StdoutLock>) {
     let distro = detect_distro();
     let colored_art = colorize(get_ascii_art(&distro));
     let art: Vec<&str> = colored_art.lines().collect();
@@ -165,6 +187,7 @@ pub fn show_info() {
         get_cpu_info(),
         get_gpu_info(),
         get_mem_info(),
+        get_disk_info(),
     ] {
         if let Some(line) = info {
             for sub in line.lines() {

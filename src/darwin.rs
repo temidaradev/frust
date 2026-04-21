@@ -1,4 +1,6 @@
 use std::env;
+use std::io::StdoutLock;
+use std::io::{BufWriter, Write};
 use std::process::Command;
 
 pub fn get_os_info() -> Option<String> {
@@ -82,7 +84,7 @@ fn gpu_info() -> Option<String> {
     Some(format!("{} ({})", model, cores))
 }
 
-pub fn show_info() {
+pub fn show_info(out: &mut BufWriter<StdoutLock>) {
     let hostname = get_host_info();
 
     if let Some(hostname) = &hostname {
