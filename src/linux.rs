@@ -31,26 +31,35 @@ fn get_cpu_info() -> Option<String> {
     Some(format!("{}", model.unwrap_or("Unknown".into()),))
 }
 
+
 fn get_mem_info() -> Option<String> {
     let file = std::fs::read_to_string("/proc/meminfo").ok()?;
 
-    let mut mem = None;
+    let parse_kb = |prefix: &str| -> Option<f64> {
+        file.lines()
+            .find(|line| line.starts_with(prefix))?
+            .split(':')
+            .nth(1)?
+            .split_whitespace()
+            .next()?
+            .parse::<f64>()
+            .ok()
+    };
 
-    for line in file.lines() {
-        if line.starts_with("MemTotal") && mem.is_none() {
-            mem = line.split(':').nth(1).map(|s| s.trim().to_string());
-        }
-    }
+    let mem_total  = parse_kb("MemTotal:")?;
+    let mem_free   = parse_kb("MemFree:")?;
+    let buffers    = parse_kb("Buffers:")?;
+    let cached     = parse_kb("Cached:")?;
 
-    if let Some(mem_str) = mem {
-        let kb_value = mem_str.split_whitespace().next()?.parse::<f64>().ok()?;
+    let mem_used = mem_total - mem_free - buffers - cached;
 
-        let gb_value = kb_value / 1_048_576.0;
+    let to_gib = |kb: f64| kb / 1_048_576.0;
 
-        return Some(format!("{:.2} GiB", gb_value));
-    }
-
-    Some("Memory: Unknown".into())
+    Some(format!(
+        "{:.2} GiB / {:.2} GiB",
+        to_gib(mem_used),
+        to_gib(mem_total)
+    ))
 }
 
 fn get_uptime_info() -> Option<String> {
