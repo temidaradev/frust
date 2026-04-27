@@ -145,6 +145,65 @@ fn battery_info() -> Option<String> {
     None
 }
 
+fn memory_info() -> Option<String> {
+    // 1. Get total RAM
+    let out = std::process::Command::new("sysctl")
+        .args(["-n", "hw.memsize"])
+        .output()
+        .ok()?;
+    let total_ram_bytes: f64 = String::from_utf8_lossy(&out.stdout).trim().parse().ok()?;
+    
+    // 2. Get active RAM used (Using vm_stat)
+    let out = std::process::Command::new("vm_stat").output().ok()?;
+    let vm_stat_raw = String::from_utf8_lossy(&out.stdout);
+    
+    // Parse vm_stat values
+    let mut page_size = 4096.0; // Fallback to 4k
+    if let Some(line) = vm_stat_raw.lines().next() {
+        if let Some(ps_str) = line.split("page size of ").nth(1) {
+            if let Some(ps_str) = ps_str.split(" bytes").next() {
+                page_size = ps_str.parse().unwrap_or(4096.0);
+            }
+        }
+    }
+    
+    let get_pages = |key: &str| -> f64 {
+        vm_stat_raw.lines()
+            .find(|l| l.starts_with(key))
+            .and_then(|l| l.split(':').nth(1))
+            .and_then(|v| v.trim().trim_end_matches('.').parse::<f64>().ok())
+            .unwrap_or(0.0)
+    };
+    
+    let pages_active = get_pages("Pages active");
+    let pages_wired = get_pages("Pages wired down");
+    let pages_compressed = get_pages("Pages occupied by compressor");
+    
+    let used_ram_bytes = (pages_active + pages_wired + pages_compressed) * page_size;
+    
+    // 3. Get Swap
+    let out = std::process::Command::new("sysctl")
+        .args(["-n", "vm.swapusage"])
+        .output()
+        .ok()?;
+    let swap_raw = String::from_utf8_lossy(&out.stdout);
+    
+    let swap_total_mb: f64 = swap_raw.split("total = ").nth(1)?.split('M').next()?.trim().parse().ok()?;
+    let swap_used_mb: f64 = swap_raw.split("used = ").nth(1)?.split('M').next()?.trim().parse().ok()?;
+    
+    let gib = |bytes: f64| bytes / 1_073_741_824.0;
+    let mb_to_gib = |mb: f64| mb / 1024.0;
+    
+    let blue = "\x1b[34m";
+    let reset = "\x1b[0m";
+
+    Some(format!(
+        "{:.2} / {:.2} GiB\n{blue}\u{f0ec} Swap:{reset} {:.2} / {:.2} GiB",
+        gib(used_ram_bytes), gib(total_ram_bytes),
+        mb_to_gib(swap_used_mb), mb_to_gib(swap_total_mb)
+    ))
+}
+
 pub fn show_info(_out: &mut BufWriter<StdoutLock>) {
     let colored_art = colorize(get_ascii_art(&Distro::MacOS));
     let art: Vec<&str> = colored_art.lines().collect();
@@ -172,6 +231,12 @@ pub fn show_info(_out: &mut BufWriter<StdoutLock>) {
 
     if let Some(gpu) = gpu_info() {
         infos.push(format!("{blue}\u{f26c} GPU:{reset} {}", gpu));
+    }
+
+    if let Some(mem) = memory_info() {
+        for line in format!("{blue}\u{f233} Memory:{reset} {}", mem).lines() {
+            infos.push(line.to_string());
+        }
     }
 
     if let Some(disk) = disk_info() {
