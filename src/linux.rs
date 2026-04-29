@@ -7,18 +7,7 @@ use pci_ids::Device;
 const BLUE: &str = "\x1b[34m";
 const RESET: &str = "\x1b[0m";
 
-pub enum Distro {
-    Arch,
-    Alpine,
-    Asahi,
-    CachyOS,
-    Endeavour,
-    Ubuntu,
-    Debian,
-    Fedora,
-    NixOS,
-    Unknown,
-}
+use crate::ascii::Distro;
 
 fn label(key: &str, value: &str) -> String {
     format!("{BLUE}{key}:{RESET} {value}")

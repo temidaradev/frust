@@ -13,7 +13,20 @@ const COLORS: [&str; 10] = [
     "\x1b[0m",  // $9
 ];
 
-use crate::linux::Distro;
+#[allow(dead_code)]
+pub enum Distro {
+    Arch,
+    Alpine,
+    Asahi,
+    CachyOS,
+    Endeavour,
+    Ubuntu,
+    Debian,
+    Fedora,
+    NixOS,
+    MacOS,
+    Unknown,
+}
 
 pub fn get_ascii_art(distro: &Distro) -> &'static str {
     match distro {
@@ -27,6 +40,7 @@ pub fn get_ascii_art(distro: &Distro) -> &'static str {
         Distro::Fedora => include_str!("../ascii/fedora.txt"),
         Distro::NixOS => include_str!("../ascii/nixos.txt"),
         Distro::Unknown => include_str!("../ascii/linux.txt"),
+        Distro::MacOS => include_str!("../ascii/macos.txt"),
     }
 }
 
